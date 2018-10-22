@@ -1,0 +1,14 @@
+Package: asbtools
+Type: Package
+Title: Alex Bresler's random tools
+Version: 0.01.0
+Date: 2018-08-06
+Authors@R: c(person("Alex", "Bresler", email = "abresler@asbcllc.com", role = c("aut", "cre")))
+Maintainer: Alex Bresler <abresler@asbcllc.com>
+Depends:
+    R (>= 3.4.0)
+Description: Random tools for ASB's packages
+License: GPL (>= 2)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.0.9000

@@ -1,0 +1,18 @@
+---
+title: "asbtools"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## About
+
+Random functions for my R packages.
+
+## Installing
+
+```{r eval=F}
+devtools::install_github("abresler/asbtools")
+```
