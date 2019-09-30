@@ -22,7 +22,7 @@ future_method <-
       "No method" %>% cat_message()
       return(invisible())
     }
-    method <- stringr::str_to_lower(method)
+    method <- str_to_lower(method)
     glue::glue("Using {method}") %>% cat_message()
 
     if (!purrr::is_null(remotes)) {
