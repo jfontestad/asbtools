@@ -3,7 +3,6 @@
 \docType{package}
 \name{asbtools}
 \alias{asbtools}
-\alias{asbtools-package}
 \title{asbtools}
 \description{
 Alex Bresler's random tools
