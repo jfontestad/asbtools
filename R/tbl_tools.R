@@ -36,6 +36,68 @@
 
 # rda ---------------------------------------------------------------------
 
+.import_rda_file <-
+  function(file = NULL,
+           return_tibble = TRUE) {
+    if (length(file) == 0) {
+      stop("Please enter a file path")
+    }
+
+    env <- new.env()
+    nm <- load(file, env)[1]
+    if (return_tibble) {
+      data <-
+        env[[nm]] %>%
+        dplyr::as_tibble()
+    } else {
+      data <-
+        env[[nm]]
+    }
+    data
+  }
+
+.curl_url <-
+  function(url = "https://github.com/abresler/FRED_Dictionaries/blob/master/data/fred_series_data.rda?raw=true",
+           return_tibble = TRUE) {
+    con <-
+      url %>%
+      curl::curl()
+
+    data <-
+      con %>%
+      .import_rda_file(return_tibble = return_tibble)
+    close(con)
+    return(data)
+  }
+
+#' Read RDA File
+#'
+#' @param file
+#' @param return_tibble
+#'
+#' @return
+#' @export
+#'
+#' @examples
+read_rda <-
+  function(file = NULL,
+           return_tibble = TRUE) {
+    if (length(file) == 0) {
+      stop("Please enter a file")
+    }
+    is_html <-
+      file %>% stringr::str_detect("http")
+
+    if (is_html) {
+      data <- .curl_url(url = file, return_tibble = return_tibble)
+    } else {
+      data <-
+        .import_rda_file(file = file, return_tibble = return_tibble)
+    }
+    data
+  }
+
+
 
 #' Partition tbl
 #'
@@ -410,4 +472,66 @@ pq_read <-
     }
 
     data
+  }
+
+
+#' RDA to Parquet
+#'
+#' @param rda_file
+#' @param unique_data
+#' @param sort_column
+#' @param pq_path
+#' @param pq_folder
+#' @param pq_file
+#' @param use_compression
+#' @param return_message
+#'
+#' @return
+#' @export
+#'
+#' @examples
+rda_to_pq <-
+  function(rda_file = "Desktop/data/usa_spending/fpds_atom/2018_final.rda",
+           unique_data = F,
+           sort_column = NULL,
+           pq_path = "Desktop/data/",
+           pq_folder = "fpds",
+           pq_file = NULL,
+           use_compression = T,
+           return_message = T
+           ) {
+    oldwd <- getwd()
+    setwd("~")
+
+    if (return_message) {
+      glue("Reading {rda_file}") %>% message()
+    }
+
+    data <- read_rda(file = rda_file)
+
+    if (unique_data) {
+      data <- unique(data)
+    }
+
+
+    if (length(sort_column) > 0) {
+      data <- data %>%
+        arrange(!!!sym(sort_column))
+    }
+
+    pq_write(
+      data = data,
+      file_path = pq_path,
+      folder = pq_folder,
+      file_name = pq_file,
+      use_compression = use_compression
+    )
+
+    rm(data)
+    gc()
+
+    if (getwd() != oldwd) {
+      setwd(oldwd)
+    }
+    return(invisible())
   }
