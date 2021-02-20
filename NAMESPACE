@@ -3,6 +3,7 @@
 export(cat_message)
 export(future_method)
 export(pq_read)
+export(pq_read_files)
 export(pq_write)
 export(rda_to_pq)
 export(read_rda)

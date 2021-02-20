@@ -474,6 +474,84 @@ pq_read <-
     data
   }
 
+#' Read Parquet Files
+#'
+#' @param path folder path
+#' @param exclude_files vector of file names to exclude
+#' @param add_file_name if `TRUE` appends file name
+#' @param return_message if `TRUE` returns a message
+#'
+#' @return
+#' @export
+#'
+#' @examples
+pq_read_files <-
+  function(path = NULL, exclude_files = NULL,
+           add_file_name = F,
+           return_message = T) {
+
+    if (length(path) == 0) {
+      stop("Enter path")
+    }
+    oldwd <- getwd()
+    setwd("~")
+
+    setwd(path)
+
+    files <- list.files()[list.files() %>% str_detect(".parquet")]
+
+    if (length(files) == 0) {
+      message("No parquet files")
+      return(invisible())
+    }
+
+    if (length(exclude_files) > 0) {
+      exclude_slugs <- exclude_files %>% str_c(collapse = "|")
+
+      if (return_message) {
+        glue('Excluding {exclude_files %>% str_c(collapse = ", ")} parquet files') %>% message()
+
+      }
+      files  <- files[!files %>% str_detect(exclude_slugs)]
+      if (length(files) == 0) {
+        message("No parquet files")
+        return(invisible())
+      }
+    }
+
+    all_data <-
+      files %>%
+      map_dfr(function(x){
+        file <- x %>% str_remove_all("\\.gz.parquet")
+        if (return_message) {
+          glue("\n\nReading {file}\n\n") %>% message()
+        }
+        data <- arrow::read_parquet(x)
+
+        zip_cols <- data %>% select(matches("^zip|^fax|^phone")) %>% names()
+
+        if (length(zip_cols) > 0) {
+          data <- data %>%
+            mutate_at(zip_cols, as.character)
+        }
+        if (add_file_name) {
+          data <-
+            data %>%
+            mutate(name_file = as.character(file)) %>%
+            select(name_file, everything())
+        }
+
+        data
+      })
+
+
+    if (oldwd != getwd()) {
+      setwd(oldwd)
+    }
+
+    all_data
+  }
+
 
 #' RDA to Parquet
 #'
