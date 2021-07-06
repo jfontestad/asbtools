@@ -18,17 +18,17 @@
 #' future_method("multicore")
 future_method <-
   function(method = NULL, remotes = NULL) {
-    if (purrr::is_null(method)) {
+    if (is_null(method)) {
       "No method" %>% cat_message()
       return(invisible())
     }
     method <- str_to_lower(method)
-    glue::glue("Using {method}") %>% cat_message()
+    glue("Using {method}") %>% cat_message()
 
-    if (!purrr::is_null(remotes)) {
-      future::plan(sym(method), remotes = remotes)
+    if (!is_null(remotes)) {
+      plan(sym(method), remotes = remotes)
       return(invisible())
     }
-    future::plan(sym(method))
+    plan(sym(method))
     return(invisible())
   }

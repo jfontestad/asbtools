@@ -61,7 +61,7 @@
            return_tibble = TRUE) {
     con <-
       url %>%
-      curl::curl()
+      curl()
 
     data <-
       con %>%
@@ -86,7 +86,7 @@ read_rda <-
       stop("Please enter a file")
     }
     is_html <-
-      file %>% stringr::str_detect("http")
+      file %>% str_detect("http")
 
     if (is_html) {
       data <- .curl_url(url = file, return_tibble = return_tibble)
@@ -316,13 +316,13 @@ write_rda <-
 #' @examples
 unnest_dt_list <- function(data, column, return_tibble = T) {
 
-  data <- data.table::as.data.table(data)
+  data <- as.data.table(data)
 
   column <- ensyms(column)
 
   clnms <- syms(setdiff(colnames(data), as.character(column)))
 
-  data <- data.table::as.data.table(data)
+  data <- as.data.table(data)
 
   data <- eval(
     expr(data[, as.character(unlist(!!!column)), by = list(!!!clnms)])
@@ -427,7 +427,7 @@ pq_write <-
     }
 
 
-    arrow::write_parquet(
+    write_parquet(
       x = data,
       sink =  file_slug,
       chunk_size = chunk_size,
@@ -465,7 +465,7 @@ pq_read <-
   function(x, ...) {
     oldwd <- getwd()
 
-    data <- arrow::read_parquet(x)
+    data <- read_parquet(x)
 
     if (oldwd != getwd()) {
       setwd(oldwd)
@@ -526,7 +526,7 @@ pq_read_files <-
         if (return_message) {
           glue("\n\nReading {file}\n\n") %>% message()
         }
-        data <- arrow::read_parquet(x)
+        data <- read_parquet(x)
 
         zip_cols <- data %>% select(matches("^zip|^fax|^phone")) %>% names()
 
@@ -613,3 +613,96 @@ rda_to_pq <-
     }
     return(invisible())
   }
+
+
+# tsv_gz ------------------------------------------------------------------
+
+
+#' Write TSV.gz file
+#'
+#' @param data
+#' @param file_path
+#' @param folder
+#' @param file_name
+#' @param return_message
+#'
+#' @return
+#' @export
+#'
+#' @examples
+write_tsv_gz <-
+  function(data = NULL,
+           file_path = NULL,
+           folder =  NULL,
+           file_name = NULL,
+           return_message = T
+           ) {
+
+    if (length(data) == 0) {
+      "Enter data" %>% message()
+      return(invisible())
+    }
+
+
+    if (length(file_path) == 0) {
+      "Enter file path" %>% message()
+      return(invisible())
+    }
+
+    if (length(file_name) == 0) {
+      "Enter file name" %>% message()
+      return(invisible())
+    }
+
+    if (length(folder) > 0) {
+      folder_path <-
+        glue("{file_path}/{folder}") %>% as.character() %>% str_replace_all("//","/")
+    } else {
+      folder_path <- glue("{file_path}") %>% as.character() %>% str_replace_all("//","/")
+    }
+
+    .build_folder(path = folder_path)
+    oldwd <- getwd()
+    setwd("~")
+    setwd(folder_path)
+
+    if (return_message) {
+      glue("Saving {file_name} via tsv.gz") %>% message()
+    }
+    tsv_file <- glue("{file_name}.tsv.gz")
+    readr::write_csv(data, tsv_file)
+
+    if (getwd() != oldwd) {
+      setwd(oldwd)
+    }
+    return(invisible())
+
+  }
+
+#' Read TSV.gz file
+#'
+#' @param file file path
+#'
+#' @return
+#' @export
+#'
+#' @examples
+read_tsv_gz <- function(file = NULL) {
+
+  if (length(file) == 0) {
+    message("Enter path")
+    return(invisible())
+  }
+
+  oldwd <- getwd()
+  setwd("~")
+  data <- vroom::vroom(file)
+
+  if (getwd() != oldwd) {
+    setwd(oldwd)
+  }
+
+  data
+}
+
+

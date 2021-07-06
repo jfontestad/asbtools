@@ -10,11 +10,11 @@
 #' cat_message(text = "Hello World")
 cat_message <-
   function(text = NULL) {
-    if (purrr::is_null(text)) {
+    if (is_null(text)) {
       return(invisible())
     }
 
-    text <- glue::glue("\n\n{text}\n\n") %>% as.character()
+    text <- glue("\n\n{text}\n\n") %>% as.character()
 
     cat(text, fill = T)
   }
