@@ -462,10 +462,10 @@ pq_write <-
 #'
 #' @examples
 pq_read <-
-  function(x, ...) {
+  function(x,as_data_frame = TRUE, ...) {
     oldwd <- getwd()
 
-    data <- read_parquet(x)
+    data <- arrow::read_parquet(x, as_data_frame = as_data_frame)
 
     if (oldwd != getwd()) {
       setwd(oldwd)
@@ -488,6 +488,7 @@ pq_read <-
 pq_read_files <-
   function(path = NULL, exclude_files = NULL,
            add_file_name = F,
+           as_data_frame = T,
            return_message = T) {
 
     if (length(path) == 0) {
@@ -526,7 +527,7 @@ pq_read_files <-
         if (return_message) {
           glue("\n\nReading {file}\n\n") %>% message()
         }
-        data <- read_parquet(x)
+        data <- read_parquet(x, as_data_frame = as_data_frame)
 
         zip_cols <- data %>% select(matches("^zip|^fax|^phone")) %>% names()
 
@@ -705,4 +706,31 @@ read_tsv_gz <- function(file = NULL) {
   data
 }
 
+
+#' Read TSV
+#'
+#' @param path
+#'
+#' @return
+#' @export
+#'
+#' @examples
+read_tsv_gz_files <-
+  function(path = NULL) {
+    if (length(path) == 0 ) {
+      message("Enter file path")
+    }
+    oldwd <- getwd()
+    setwd("~")
+    setwd(path)
+
+    files <- list.files()[list.files() %>% str_detect("tsv.gz|csv")]
+
+    if (length(files) == 0 ) {
+      message("No TSV or csv files")
+    }
+    files %>% map_dfr( ~ {
+      vroom(file = ., show_col_types = FALSE)
+    })
+  }
 

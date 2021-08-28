@@ -8,6 +8,7 @@ pq_read_files(
   path = NULL,
   exclude_files = NULL,
   add_file_name = F,
+  as_data_frame = T,
   return_message = T
 )
 }
