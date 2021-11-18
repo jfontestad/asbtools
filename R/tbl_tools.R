@@ -33,6 +33,25 @@
     return(invisible())
   }
 
+#' Build Set of Folders
+#'
+#' @param paths
+#'
+#' @return
+#' @export
+#'
+#' @examples
+build_folders <-
+  function(paths = NULL) {
+    if (length(paths) == 0) {
+      return(invisible())
+    }
+    paths %>%
+      walk(function(x){
+        .build_folder(path = x)
+      })
+  }
+
 
 # rda ---------------------------------------------------------------------
 
@@ -79,8 +98,17 @@
 #' @export
 #'
 #' @examples
+#' library(asbtools)
+#' library(tidyverse)
+#' setwd("~)
+#' read_rda(file = "Desktop/abresler.github.io/r_packages/govtrackR/data/all_agencies.rda", snake_names = T)
+#' read_rda(file = "Desktop/abresler.github.io/r_packages/govtrackR/data/all_agencies.rda", to_arrow_table = T, snake_names = T)
+#'
+#'
 read_rda <-
   function(file = NULL,
+           snake_names = F,
+           to_arrow_table = F,
            return_tibble = TRUE) {
     if (length(file) == 0) {
       stop("Please enter a file")
@@ -94,6 +122,16 @@ read_rda <-
       data <-
         .import_rda_file(file = file, return_tibble = return_tibble)
     }
+
+    if (snake_names) {
+      data <- data %>%
+        janitor::clean_names()
+    }
+
+    if (to_arrow_table) {
+      data <- tbl_arrow(data = data)
+    }
+
     data
   }
 
@@ -219,10 +257,20 @@ write_partitioned_rda <-
            partitions = 10,
            include_name = T,
            file_name = NULL,
-           folder_path=  NULL,
+           folder_path =  NULL,
            return_message = T) {
-    data <- tbl_partition(data = data, partitions = partitions, return_message = return_message)
-    write_rda_group_files(data = data, group = "idPartition", include_name = include_name, file_name = file_name, folder_path = folder_path, return_message = return_message)
+    data <-
+      tbl_partition(data = data,
+                    partitions = partitions,
+                    return_message = return_message)
+    write_rda_group_files(
+      data = data,
+      group = "idPartition",
+      include_name = include_name,
+      file_name = file_name,
+      folder_path = folder_path,
+      return_message = return_message
+    )
   }
 
 
@@ -236,7 +284,7 @@ write_partitioned_rda <-
 #'
 #' @examples
 tbl_scramble <-
-  function(data){
+  function(data) {
     as_tibble(data[sample(nrow(data)), sample(ncol(data))])
   }
 
@@ -259,7 +307,7 @@ write_rda <-
            file_path = NULL,
            folder =  NULL,
            file_name = NULL,
-           return_message = T){
+           return_message = T) {
     if (length(data) == 0) {
       "Enter data" %>% message()
       return(invisible())
@@ -278,9 +326,10 @@ write_rda <-
 
     if (length(folder) > 0) {
       folder_path <-
-        glue("{file_path}/{folder}") %>% as.character() %>% str_replace_all("//","/")
+        glue("{file_path}/{folder}") %>% as.character() %>% str_replace_all("//", "/")
     } else {
-      folder_path <- glue("{file_path}") %>% as.character() %>% str_replace_all("//","/")
+      folder_path <-
+        glue("{file_path}") %>% as.character() %>% str_replace_all("//", "/")
     }
 
     .build_folder(path = folder_path)
@@ -315,7 +364,6 @@ write_rda <-
 #'
 #' @examples
 unnest_dt_list <- function(data, column, return_tibble = T) {
-
   data <- as.data.table(data)
 
   column <- ensyms(column)
@@ -324,9 +372,8 @@ unnest_dt_list <- function(data, column, return_tibble = T) {
 
   data <- as.data.table(data)
 
-  data <- eval(
-    expr(data[, as.character(unlist(!!!column)), by = list(!!!clnms)])
-  )
+  data <-
+    eval(expr(data[, as.character(unlist(!!!column)), by = list(!!!clnms)]))
 
   colnames(data) <- c(as.character(clnms), as.character(column))
 
@@ -337,283 +384,55 @@ unnest_dt_list <- function(data, column, return_tibble = T) {
   data
 }
 
-
-
-# arrow -------------------------------------------------------------------
-
-
-#' Write Arrow Parquet Files
+#' Read RDA files
 #'
-#' @param data
-#' @param file_path
-#' @param folder
-#' @param file_name
-#' @param chunk_size
-#' @param version
-#' @param use_compression
-#' @param compression
-#' @param compression_level
-#' @param use_dictionary
-#' @param write_statistics
-#' @param data_page_size
-#' @param use_deprecated_int96_timestamps
-#' @param coerce_timestamps
-#' @param allow_truncated_timestamps
-#' @param properties
-#' @param arrow_properties
-#' @param return_message
+#' @param path a file pah
+#' @param snake_names
+#' @param to_arrow_table
 #'
-#' @return
+#' @return a \code{tibble}
 #' @export
 #'
 #' @examples
-pq_write <-
-  function(data = NULL,
-           file_path = NULL,
-           folder =  NULL,
-           file_name = NULL,
-           chunk_size = NULL,
-           version = NULL,
-           use_compression = T,
-           compression = default_parquet_compression(),
-           compression_level = 9,
-           use_dictionary = NULL,
-           write_statistics = NULL,
-           data_page_size = NULL,
-           use_deprecated_int96_timestamps = FALSE,
-           coerce_timestamps = NULL,
-           allow_truncated_timestamps = FALSE,
-           properties = NULL,
-           arrow_properties = NULL,
-           return_message = T){
-    if (length(data) == 0) {
-      "Enter data" %>% message()
-      return(invisible())
-    }
-
-
-    if (length(file_path) == 0) {
-      "Enter file path" %>% message()
-      return(invisible())
-    }
-
-    if (length(file_name) == 0) {
-      "Enter file name" %>% message()
-      return(invisible())
-    }
-
-    if (length(folder) > 0) {
-      folder_path <-
-        glue("{file_path}/{folder}") %>% as.character() %>% str_replace_all("//","/")
-    } else {
-      folder_path <- glue("{file_path}") %>% as.character() %>% str_replace_all("//","/")
-    }
-
-    .build_folder(path = folder_path)
-    oldwd <- getwd()
-    setwd(folder_path)
-
-    if (return_message) {
-      glue("Saving {file_name} via parquet") %>% message()
-    }
-
-    if (use_compression) {
-      compression <- "gzip"
-      file_slug <-
-        glue("{file_name}.gz.parquet") %>% as.character()
-    } else {
-      file_slug <-
-        glue("{file_name}.parquet") %>% as.character()
-    }
-
-
-    write_parquet(
-      x = data,
-      sink =  file_slug,
-      chunk_size = chunk_size,
-      version = version,
-      compression = compression,
-      compression_level = compression_level,
-      use_dictionary = use_dictionary,
-      write_statistics = write_statistics,
-      data_page_size = data_page_size,
-      use_deprecated_int96_timestamps = use_deprecated_int96_timestamps,
-      coerce_timestamps = coerce_timestamps,
-      allow_truncated_timestamps = allow_truncated_timestamps,
-      properties = properties,
-      arrow_properties = arrow_properties
-    )
-
-    if (oldwd != folder_path) {
-      setwd(oldwd)
-    }
-
-    return(invisible())
-
-  }
-
-#' Read Parquet
-#'
-#' @param x
-#' @param ...
-#'
-#' @return
-#' @export
-#'
-#' @examples
-pq_read <-
-  function(x,as_data_frame = TRUE, ...) {
-    oldwd <- getwd()
-
-    data <- arrow::read_parquet(x, as_data_frame = as_data_frame)
-
-    if (oldwd != getwd()) {
-      setwd(oldwd)
-    }
-
-    data
-  }
-
-#' Read Parquet Files
-#'
-#' @param path folder path
-#' @param exclude_files vector of file names to exclude
-#' @param add_file_name if `TRUE` appends file name
-#' @param return_message if `TRUE` returns a message
-#'
-#' @return
-#' @export
-#'
-#' @examples
-pq_read_files <-
-  function(path = NULL, exclude_files = NULL,
-           add_file_name = F,
-           as_data_frame = T,
-           return_message = T) {
+read_rda_files <-
+  function(path = "Desktop/abresler.github.io/r_packages/govtrackR/data/nsf/nsf_grants/",
+           snake_names = F,
+           to_arrow_table = T) {
 
     if (length(path) == 0) {
-      stop("Enter path")
-    }
-    oldwd <- getwd()
-    setwd("~")
-
-    setwd(path)
-
-    files <- list.files()[list.files() %>% str_detect(".parquet")]
-
-    if (length(files) == 0) {
-      message("No parquet files")
       return(invisible())
     }
 
-    if (length(exclude_files) > 0) {
-      exclude_slugs <- exclude_files %>% str_c(collapse = "|")
 
-      if (return_message) {
-        glue('Excluding {exclude_files %>% str_c(collapse = ", ")} parquet files') %>% message()
-
-      }
-      files  <- files[!files %>% str_detect(exclude_slugs)]
-      if (length(files) == 0) {
-        message("No parquet files")
-        return(invisible())
-      }
-    }
-
+    old_wd <- getwd()
+    setwd(path)
+    rda_files <- list.files()[list.files() %>% str_detect(".rda")]
     all_data <-
-      files %>%
-      map_dfr(function(x){
-        file <- x %>% str_remove_all("\\.gz.parquet")
-        if (return_message) {
-          glue("\n\nReading {file}\n\n") %>% message()
-        }
-        data <- read_parquet(x, as_data_frame = as_data_frame)
-
-        zip_cols <- data %>% select(matches("^zip|^fax|^phone")) %>% names()
-
-        if (length(zip_cols) > 0) {
-          data <- data %>%
-            mutate_at(zip_cols, as.character)
-        }
-        if (add_file_name) {
-          data <-
-            data %>%
-            mutate(name_file = as.character(file)) %>%
-            select(name_file, everything())
-        }
-
-        data
+      rda_files %>%
+      map_dfr(function(file) {
+        glue("Reading {file}") %>% message()
+        read_rda(
+          file = file,
+          return_tibble = T,
+          snake_names = F,
+          to_arrow_table = F
+        )
       })
 
-
-    if (oldwd != getwd()) {
-      setwd(oldwd)
+    if (getwd() != old_wd) {
+      setwd(old_wd)
     }
 
+    if (snake_names) {
+      all_data <- all_data %>% janitor::clean_names()
+    }
+
+    if (to_arrow_table) {
+      all_data <- tbl_arrow(data = all_data)
+    }
     all_data
   }
 
-
-#' RDA to Parquet
-#'
-#' @param rda_file
-#' @param unique_data
-#' @param sort_column
-#' @param pq_path
-#' @param pq_folder
-#' @param pq_file
-#' @param use_compression
-#' @param return_message
-#'
-#' @return
-#' @export
-#'
-#' @examples
-rda_to_pq <-
-  function(rda_file = "Desktop/data/usa_spending/fpds_atom/2018_final.rda",
-           unique_data = F,
-           sort_column = NULL,
-           pq_path = "Desktop/data/",
-           pq_folder = "fpds",
-           pq_file = NULL,
-           use_compression = T,
-           return_message = T
-           ) {
-    oldwd <- getwd()
-    setwd("~")
-
-    if (return_message) {
-      glue("Reading {rda_file}") %>% message()
-    }
-
-    data <- read_rda(file = rda_file)
-
-    if (unique_data) {
-      data <- unique(data)
-    }
-
-
-    if (length(sort_column) > 0) {
-      data <- data %>%
-        arrange(!!!sym(sort_column))
-    }
-
-    pq_write(
-      data = data,
-      file_path = pq_path,
-      folder = pq_folder,
-      file_name = pq_file,
-      use_compression = use_compression
-    )
-
-    rm(data)
-    gc()
-
-    if (getwd() != oldwd) {
-      setwd(oldwd)
-    }
-    return(invisible())
-  }
 
 
 # tsv_gz ------------------------------------------------------------------
@@ -636,9 +455,7 @@ write_tsv_gz <-
            file_path = NULL,
            folder =  NULL,
            file_name = NULL,
-           return_message = T
-           ) {
-
+           return_message = T) {
     if (length(data) == 0) {
       "Enter data" %>% message()
       return(invisible())
@@ -657,9 +474,10 @@ write_tsv_gz <-
 
     if (length(folder) > 0) {
       folder_path <-
-        glue("{file_path}/{folder}") %>% as.character() %>% str_replace_all("//","/")
+        glue("{file_path}/{folder}") %>% as.character() %>% str_replace_all("//", "/")
     } else {
-      folder_path <- glue("{file_path}") %>% as.character() %>% str_replace_all("//","/")
+      folder_path <-
+        glue("{file_path}") %>% as.character() %>% str_replace_all("//", "/")
     }
 
     .build_folder(path = folder_path)
@@ -683,13 +501,21 @@ write_tsv_gz <-
 #' Read TSV.gz file
 #'
 #' @param file file path
+#' @param snake_names
+#' @param to_arrow_table
 #'
 #' @return
 #' @export
 #'
 #' @examples
-read_tsv_gz <- function(file = NULL) {
-
+#' library(tidyverse)
+#' library(asbtools)
+#' read_tsv_gz(file = "Desktop/abresler.github.io/r_packages/govtrackR/data/thousand_talents.tsv.gz", to_arrow_table = T) %>% count(name_sponsor, sort = T) %>% collect()
+#'
+#'
+read_tsv_gz <-
+  function(file = NULL, snake_names = T,
+           to_arrow_table = F) {
   if (length(file) == 0) {
     message("Enter path")
     return(invisible())
@@ -703,6 +529,16 @@ read_tsv_gz <- function(file = NULL) {
     setwd(oldwd)
   }
 
+  if (snake_names) {
+    data <- data %>%
+      janitor::clean_names()
+  }
+
+  if (to_arrow_table) {
+    data <- tbl_arrow(data = data)
+  }
+
+
   data
 }
 
@@ -710,27 +546,47 @@ read_tsv_gz <- function(file = NULL) {
 #' Read TSV
 #'
 #' @param path
+#' @param snake_names
+#' @param to_arrow_table
 #'
 #' @return
 #' @export
 #'
 #' @examples
 read_tsv_gz_files <-
-  function(path = NULL) {
-    if (length(path) == 0 ) {
+  function(path = NULL,
+           snake_names = T,
+           to_arrow_table = F) {
+    if (length(path) == 0) {
       message("Enter file path")
     }
     oldwd <- getwd()
     setwd("~")
     setwd(path)
 
-    files <- list.files()[list.files() %>% str_detect("tsv.gz|csv")]
+    files <-
+      list.files()[list.files() %>% str_detect("tsv.gz|csv")]
 
-    if (length(files) == 0 ) {
+    if (length(files) == 0) {
       message("No TSV or csv files")
     }
-    files %>% map_dfr( ~ {
+    all_data <-
+      files %>% map_dfr( ~ {
       vroom(file = ., show_col_types = FALSE)
     })
-  }
 
+    if (getwd() != oldwd) {
+      setwd(oldwd)
+    }
+
+    if (snake_names) {
+      all_data <- all_data %>%
+        janitor::clean_names()
+    }
+
+    if (to_arrow_table) {
+      all_data <- all_data %>% tbl_arrow()
+    }
+
+    all_data
+  }

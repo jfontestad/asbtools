@@ -24,3 +24,28 @@ push_website_changes_to_github <-
 
     system(command = system_text)
   }
+
+#' Return Tree Path
+#'
+#' @param path
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#'
+#' tree_path(path = "Desktop/data/usa_spending/fpds/")
+#'
+tree_path <-
+  function(path = NULL) {
+    if (length(path) == 0) {
+      return(invisible())
+    }
+    oldwd <- getwd()
+    setwd("~")
+    system(glue::glue("tree {path}"))
+    if (getwd() != oldwd) {
+      setwd(oldwd)
+    }
+    invisible()
+  }

@@ -4,7 +4,12 @@
 \alias{read_rda}
 \title{Read RDA File}
 \usage{
-read_rda(file = NULL, return_tibble = TRUE)
+read_rda(
+  file = NULL,
+  snake_names = F,
+  to_arrow_table = F,
+  return_tibble = TRUE
+)
 }
 \arguments{
 \item{return_tibble}{}

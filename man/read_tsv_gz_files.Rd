@@ -4,10 +4,10 @@
 \alias{read_tsv_gz_files}
 \title{Read TSV}
 \usage{
-read_tsv_gz_files(path = NULL)
+read_tsv_gz_files(path = NULL, snake_names = T, to_arrow_table = F)
 }
 \arguments{
-\item{path}{}
+\item{to_arrow_table}{}
 }
 \value{
 

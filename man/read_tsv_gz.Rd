@@ -4,14 +4,23 @@
 \alias{read_tsv_gz}
 \title{Read TSV.gz file}
 \usage{
-read_tsv_gz(file = NULL)
+read_tsv_gz(file = NULL, snake_names = T, to_arrow_table = F)
 }
 \arguments{
 \item{file}{file path}
+
+\item{to_arrow_table}{}
 }
 \value{
 
 }
 \description{
 Read TSV.gz file
+}
+\examples{
+library(tidyverse)
+library(asbtools)
+read_tsv_gz(file = "Desktop/abresler.github.io/r_packages/govtrackR/data/thousand_talents.tsv.gz", to_arrow_table = T) \%>\% count(name_sponsor, sort = T) \%>\% collect()
+
+
 }

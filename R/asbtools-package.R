@@ -5,7 +5,7 @@
 #' @name asbtools
 #' @docType package
 #' @author Alex Bresler (abresler@@asbcllc.com)
-#' @import dplyr purrr glue future furrr arrow stringr stringi curl vroom readr janitor
+#' @import dplyr purrr glue future furrr arrow stringr stringi curl vroom readr janitor duckdb DBI dbplyr
 #' @importFrom glue glue
 
 NULL

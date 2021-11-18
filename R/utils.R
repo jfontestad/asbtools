@@ -39,3 +39,30 @@ tbl_installed_packages <-
 
     all_data
   }
+
+#' Remove an Item or Folder
+#'
+#' @param path
+#' @param recursive
+#' @param force
+#' @param return_message
+#'
+#' @return
+#' @export
+#'
+#' @examples
+delete_item <-
+  function(path =  NULL,
+           recursive = T,
+           force = T,
+           return_message = T) {
+    if (length(path) == 0) {
+      return(invisible())
+    }
+    if (return_message) {
+      glue("Removing {path}") %>% message()
+    }
+    unlink(x = path,
+           recursive = recursive,
+           force = T)
+  }
