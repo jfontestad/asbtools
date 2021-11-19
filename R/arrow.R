@@ -873,6 +873,19 @@ arrow_table_features <-
 
   }
 
+#' Arrow Compute Functions
+#'
+#' @return
+#' @export
+#'
+#' @examples
+tbl_arrow_compute_functions <-
+  function() {
+    tibble(name_function = arrow::list_compute_functions()) %>%
+      mutate(name_function_r = glue("arrow_{name_function}") %>% as.character()) %>%
+      mutate(number_function = 1:n()) %>%
+      select(number_function, everything())
+  }
 
 
 # arrow -------------------------------------------------------------------
