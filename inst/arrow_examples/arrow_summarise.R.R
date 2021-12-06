@@ -1,6 +1,6 @@
 library(tidyverse)
 library(asbtools)
-x = "Desktop/data/usa_spending/fpds/1978.gz.parquet"
+x = "Desktop/data/usa_spending/fpds/1978/1978.gz.parquet"
 data <- pq_read(x = x, as_data_frame = F, to_duck = F)
 char_var <- c("name_agency_award", "name_office_award", "name_vendor")
 amt_var <- "amount_obligation"
@@ -86,10 +86,10 @@ d <- data %>%
   )
 
 d %>%
-  tbl_fct_lump(variable = "name_agency_award_which_max",
+  asbviz::tbl_fct_lump(variable = "name_agency_award_which_max",
                weight = "amount_obligation_total",
                n_unique = 5) %>%
-  hc_xy(
+  asbviz::hc_xy(
     x = "amount_obligation_mean",
     y = "amount_obligation_total",
     name = "code_product_service",

@@ -760,6 +760,7 @@ tbl_count <-
         summarise(UQ(amount_var) := sum(!!sym(calculation_variable), na.rm = T)) %>%
         collect() %>%
         ungroup() %>%
+        arrange(desc(!!sym(amount_var))) %>%
         group_by(!!!syms(group_variables)) %>%
         slice(1:top) %>%
         ungroup() %>%
@@ -774,6 +775,7 @@ tbl_count <-
         summarise(UQ(amount_var) := sum(!!sym(calculation_variable), na.rm = T)) %>%
         collect() %>%
         ungroup() %>%
+        arrange(desc(!!sym(amount_var))) %>%
         slice(1:top) %>%
         ungroup() %>%
         rename(UQ(new_var_name) := top_variable)
