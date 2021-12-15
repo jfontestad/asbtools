@@ -1168,9 +1168,7 @@ arrow_write_data_set <-
 
       if (length(schema_name) == 0) {
         schema_name <- "tbl_arrow_schema"
-      }
-
-      if (length(schema_name) > 0) {
+      } else {
         schema_name <-
           glue("tbl_arrow_schema_{schema_name}") %>% as.character()
       }
@@ -1551,14 +1549,16 @@ arrow_open_data <-
 
       if (length(schema_name) == 0) {
         schema_name <- "tbl_arrow_schema"
-      }
-
-      if (length(schema_name) > 0) {
+        assign(x = schema_name, value = tbl_features, envir = .GlobalEnv)
+      } else {
         schema_name <-
           glue("tbl_arrow_schema_{schema_name}") %>% as.character()
+        assign(x = schema_name, value = tbl_features, envir = .GlobalEnv)
       }
 
-      assign(x = schema_name, value = tbl_features, envir = .GlobalEnv)
+
+
+
     }
 
 
