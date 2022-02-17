@@ -334,6 +334,7 @@ write_rda <-
 
     .build_folder(path = folder_path)
     oldwd <- getwd()
+    setwd("~")
     setwd(folder_path)
     file_slug <- glue("{file_name}.rda")
 

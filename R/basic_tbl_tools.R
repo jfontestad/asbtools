@@ -299,6 +299,7 @@ tbl_allocate <-
 tbl_summarise <-
   function(data,
            group_variables = NULL,
+           append_slug = NULL,
            widen_variable = NULL,
            count_variable = "count",
            distinct_variables = NULL,
@@ -321,7 +322,6 @@ tbl_summarise <-
            remove_top_amount = T,
            filters = c("UNNAMED", "UNKNOWN"),
            ...) {
-
     if (length(group_variables) == 0 & length(widen_variable) == 0) {
       group_slugs <- NULL
     } else {
@@ -341,6 +341,37 @@ tbl_summarise <-
       "No summary variables" %>% message()
       return(tibble())
     }
+
+    if (length(calculation_variable) == 0 &
+        length(amount_variables) > 0) {
+      calculation_variable <- amount_variables[[1]]
+    }
+
+    analysis_vars <-
+      c(
+        group_variables,
+        widen_variable,
+        distinct_variables,
+        amount_variables,
+        mean_variables,
+        top_variables,
+        calculation_variable,
+        median_variables,
+        min_variables,
+        max_variables,
+        which_max_variables,
+        which_min_variables,
+        unique_variables,
+        first_variables,
+        last_variables,
+        variance_variables,
+        sd_variables
+      ) %>%
+      unique()
+
+    data <- data %>%
+      select(one_of(analysis_vars))
+
 
     if (length(count_variable) > 0) {
       all_data <-
@@ -370,7 +401,7 @@ tbl_summarise <-
             .fns = ~ {
               n_distinct(.x, na.rm = T)
             },
-            .names = "{.col}_distinct"
+            .names = "count_{.col}_distinct"
           ),
           across(
             .cols = all_of(mean_variables),
@@ -546,7 +577,8 @@ tbl_summarise <-
       names(all_data) %>% str_detect("_total_total") %>% sum(na.rm = T) > 0
 
     if (bad_totals) {
-      new_var <- names(all_data)[names(all_data) %>% str_detect("_total_total$")] %>%
+      new_var <-
+        names(all_data)[names(all_data) %>% str_detect("_total_total$")] %>%
         str_remove_all("_total")
       names(all_data)[names(all_data) %>% str_detect("_total_total$")] <-
         names(all_data)[names(all_data) %>% str_detect("_total_total$")] %>%
@@ -554,6 +586,13 @@ tbl_summarise <-
 
       names(all_data)[names(all_data) %>% str_detect(new_var)] <-
         names(all_data)[names(all_data) %>% str_detect(new_var)] %>% str_c("_total")
+    }
+
+
+    if (length(append_slug) > 0) {
+      names(all_data)[names(all_data) %in% c(all_data %>% select(-one_of(group_variables)) %>% names())] <-
+        names(all_data)[names(all_data) %in% c(all_data %>% select(-one_of(group_variables)) %>% names())] %>%
+        str_c(append_slug, sep = "_")
     }
 
 
@@ -810,7 +849,6 @@ tbl_top_n_groups <-
            filters = c("UNNAMED", "UNKNOWN"),
            top = 1,
            remove_top_amount = T) {
-
     if (length(calculation_variable) == 0) {
       "Enter calculation variable" %>% message()
       return(data)
@@ -1182,11 +1220,12 @@ tbl_nest <- function(data,
       ungroup()
   }
 
-  if (length(nesting_variables) > 0 ) {
-
+  if (length(nesting_variables) > 0) {
     data <-
       data %>%
-      select(one_of(c(grouping_variables, nesting_variables))) %>%
+      select(one_of(c(
+        grouping_variables, nesting_variables
+      ))) %>%
       group_by(!!!syms(grouping_variables)) %>%
       nest() %>%
       ungroup()
@@ -1201,3 +1240,5 @@ tbl_nest <- function(data,
 
   data
 }
+
+

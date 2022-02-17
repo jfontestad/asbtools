@@ -2,4 +2,6 @@
 ^\.Rproj\.user$
 ^.*\.dev$
 /dev
-
+index.md
+index.Rmd
+./dev

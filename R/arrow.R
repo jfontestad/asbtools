@@ -142,6 +142,7 @@ tbl_arrow_top_n_groups <-
 #' @param filters
 #' @param ...
 #' @param to_arrow_table
+#' @param append_slug
 #'
 #' @return
 #' @export
@@ -151,6 +152,7 @@ tbl_arrow_top_n_groups <-
 tbl_arrow_summarise <-
   function(data,
            group_variables = NULL,
+           append_slug = NULL,
            widen_variable = NULL,
            count_variable = "count",
            distinct_variables = NULL,
@@ -175,7 +177,7 @@ tbl_arrow_summarise <-
            to_arrow_table = F,
            ...) {
 
-    is_arrow <- class(data) %in% c("Table", "ArrowTabular", "ArrowObject") %>% sum(na.rm = T) >= 1
+    is_arrow <- class(data) %in% c("Table", "ArrowTabular","arrow_dplyr_query", "ArrowObject") %>% sum(na.rm = T) >= 1
 
     if (!is_arrow) {
       "Not arrow type" %>% message()
@@ -198,6 +200,31 @@ tbl_arrow_summarise <-
       return(data)
     }
 
+    analysis_vars <-
+      c(
+        group_variables,
+        widen_variable,
+        distinct_variables,
+        amount_variables,
+        mean_variables,
+        top_variables,
+        calculation_variable,
+        median_variables,
+        min_variables,
+        max_variables,
+        which_max_variables,
+        which_min_variables,
+        unique_variables,
+        first_variables,
+        last_variables,
+        variance_variables,
+        sd_variables
+      ) %>%
+      unique()
+
+    data <- data %>%
+      select(one_of(analysis_vars))
+
     if (length(group_variables) > 0) {
       group_slugs <- c(group_variables, widen_variable) %>% unique()
       data <- data %>%
@@ -210,6 +237,10 @@ tbl_arrow_summarise <-
       data <-
         data %>%
         group_by(!!!syms(group_slugs))
+    }
+
+    if (length(calculation_variable) == 0 & length(amount_variables) > 0) {
+      calculation_variable <- amount_variables[[1]]
     }
 
     if (length(group_variables) == 0 && length(widen_variable) == 0) {
@@ -254,7 +285,7 @@ tbl_arrow_summarise <-
       distinct_variables %>%
         walk(function(var) {
           new_var <-
-            glue("{var}_distinct") %>% as.character()
+            glue("count_{var}_distinct") %>% as.character()
 
 
           if (length(group_slugs) == 0) {
@@ -700,6 +731,12 @@ tbl_arrow_summarise <-
 
       names(all_data)[names(all_data) %>% str_detect(new_var)] <-
         names(all_data)[names(all_data) %>% str_detect(new_var)] %>% str_c("_total")
+    }
+
+    if (length(append_slug) > 0) {
+      names(all_data)[names(all_data) %in% c(all_data %>% select(-one_of(group_variables)) %>% names())] <-
+        names(all_data)[names(all_data) %in% c(all_data %>% select(-one_of(group_variables)) %>% names())] %>%
+        str_c(append_slug, sep = "_")
     }
 
     if (to_arrow_table) {

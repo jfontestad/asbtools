@@ -56,6 +56,8 @@ delete_item <-
            recursive = T,
            force = T,
            return_message = T) {
+    oldwd <- getwd()
+    setwd("~")
     if (length(path) == 0) {
       return(invisible())
     }
@@ -65,4 +67,9 @@ delete_item <-
     unlink(x = path,
            recursive = recursive,
            force = T)
+
+    if (getwd() != oldwd) {
+      setwd(oldwd)
+    }
+    return(invisible())
   }

@@ -7,6 +7,7 @@
 tbl_summarise(
   data,
   group_variables = NULL,
+  append_slug = NULL,
   widen_variable = NULL,
   count_variable = "count",
   distinct_variables = NULL,
