@@ -8,6 +8,7 @@ tbl_cut_variables(
   data,
   variables = NULL,
   breaks = NULL,
+  remove_original_variables = F,
   override_labels = NULL,
   is_ordered_factor = T,
   digit_label = 10,

@@ -12,3 +12,6 @@ tbl_arrow_compute_functions()
 \description{
 Arrow Compute Functions
 }
+\examples{
+tbl_arrow_compute_functions()
+}

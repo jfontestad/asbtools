@@ -34,3 +34,7 @@ pq_write(
 \description{
 Write Arrow Parquet Files
 }
+\examples{
+
+
+}

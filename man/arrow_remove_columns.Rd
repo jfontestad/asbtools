@@ -2,7 +2,7 @@
 % Please edit documentation in R/arrow.R
 \name{arrow_remove_columns}
 \alias{arrow_remove_columns}
-\title{Remove Setof Arrow Columns}
+\title{Remove Set of Arrow Columns}
 \usage{
 arrow_remove_columns(data, remove_columns = NULL)
 }
@@ -13,5 +13,5 @@ arrow_remove_columns(data, remove_columns = NULL)
 
 }
 \description{
-Remove Setof Arrow Columns
+Remove Set of Arrow Columns
 }

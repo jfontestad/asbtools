@@ -1,5 +1,10 @@
 
-# utils -------------------------------------------------------------------
+
+
+
+# analysis ----------------------------------------------------------------
+
+
 .top_group <-
   function(data,
            group_variables = "cut",
@@ -77,7 +82,6 @@ tbl_arrow_top_n_groups <-
            filters = NULL,
            top = 1,
            remove_top_amount = T) {
-
     if (length(calculation_variable) == 0) {
       "Enter calculation variable" %>% message()
       return(data)
@@ -176,8 +180,8 @@ tbl_arrow_summarise <-
            filters =  NULL,
            to_arrow_table = F,
            ...) {
-
-    is_arrow <- class(data) %in% c("Table", "ArrowTabular","arrow_dplyr_query", "ArrowObject") %>% sum(na.rm = T) >= 1
+    is_arrow <-
+      class(data) %in% c("Table", "ArrowTabular", "arrow_dplyr_query", "ArrowObject") %>% sum(na.rm = T) >= 1
 
     if (!is_arrow) {
       "Not arrow type" %>% message()
@@ -239,11 +243,13 @@ tbl_arrow_summarise <-
         group_by(!!!syms(group_slugs))
     }
 
-    if (length(calculation_variable) == 0 & length(amount_variables) > 0) {
+    if (length(calculation_variable) == 0 &
+        length(amount_variables) > 0) {
       calculation_variable <- amount_variables[[1]]
     }
 
-    if (length(group_variables) == 0 && length(widen_variable) == 0) {
+    if (length(group_variables) == 0 &&
+        length(widen_variable) == 0) {
       group_slugs <- NULL
     }
 
@@ -318,7 +324,7 @@ tbl_arrow_summarise <-
             all_data <<-
               all_data %>%
               left_join(df_var, by = group_slugs)
-            }
+          }
 
 
 
@@ -750,7 +756,385 @@ tbl_arrow_summarise <-
 
   }
 
-#' Remove Setof Arrow Columns
+
+# filter ------------------------------------------------------------------
+
+
+# exact -------------------------------------------------------------------
+
+
+.arrow_filter_feature_in <-
+  function(data,
+           id_column = "id_contract_analysis",
+           feature = "code_product_service",
+           values = "1550",
+           return_message = T) {
+    if (length(id_column) == 0) {
+      "Enter id column" %>% message()
+    }
+
+    if (return_message) {
+      value_slugs <- values %>% str_c(collapse = ", ")
+      glue("Searching {feature} for {value_slugs}") %>% message()
+    }
+
+    data <-
+      data %>%
+      select(!!sym(id_column), !!sym(feature)) %>%
+      distinct()
+
+    data <-
+      data %>%
+      filter(!!sym(feature) %in% values)
+
+    data <- data %>% collect()
+
+    if (nrow(data) == 0) {
+      "No Matches"
+      return(tibble())
+    }
+
+    data <-
+      data %>%
+      mutate(
+        matching_feature = glue("{feature}") %>% as.character(),
+        searched = glue("{as.name(feature) %>% eval()}") %>% as.character(),
+        match = glue("{feature}: {as.name(feature) %>% eval()}") %>% as.character()
+      ) %>%
+      select(one_of(id_column), match, searched, matching_feature)
+
+    gc(verbose = T,
+       reset = T,
+       full = T)
+
+    data
+
+  }
+
+#' Filter arrow features based on in parameters
+#'
+#' @param data
+#' @param id_column
+#' @param features
+#' @param values
+#' @param return_message
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' fpds <- sheldon::arrow_fpds
+#'
+#' arrow_filter_exact(fpds, id_column = "id_contract_analysis", features = c("code_research", "code_product_service"), values = c("SR3", "ST3", "1550"))
+#'
+arrow_filter_exact <-
+  function(data,
+           id_column = NULL,
+           features = NULL,
+           values = NULL,
+           return_arrow = F,
+           summarise_final_data = T,
+           return_message = T) {
+
+
+    if (length(features) == 0) {
+      "Enter features" %>% message()
+    }
+
+    if (length(values) == 0) {
+      "Enter values" %>% message()
+    }
+    .arrow_filter_feature_in_safe <-
+      possibly(.arrow_filter_feature_in, tibble())
+
+    all_data <-
+      features %>%
+      map_dfr(function(feature) {
+        .arrow_filter_feature_in_safe(
+          data = data,
+          id_column = id_column,
+          feature = feature,
+          values = values,
+          return_message = return_message
+        )
+      })
+
+    if (nrow(all_data) == 0) {
+      "No matches" %>% message()
+      return(tibble())
+    }
+
+    if (summarise_final_data) {
+      all_data <- all_data %>%
+        group_by(!!sym(id_column)) %>%
+        summarise(
+          terms_matched = unique(searched) %>% sort() %>% str_c(collapse = " | "),
+          count_matched_terms  = n_distinct(searched),
+          features_matched = unique(matching_feature) %>% sort() %>% str_c(collapse = " | "),
+          count_matched_features = n_distinct(matching_feature),
+          terms_features_matched = unique(match) %>% sort() %>% str_c(collapse = " | "),
+          count_matched_terms_features = n_distinct(match),
+          .groups = "drop"
+        )
+    }
+
+
+    if (return_arrow) {
+      all_data <- all_data %>%
+        asbtools::arrow_table()
+    }
+
+    all_data
+
+  }
+
+# regex -------------------------------------------------------------------
+
+
+.arrow_filter_regex_feature <-
+  function(data,
+           id_column = "id_contract_analysis",
+           feature = "description_obligation",
+           values = c("PTSD", "GAY", "GENDER STUDIES"),
+           to_upper = T,
+           return_message = T) {
+    if (length(id_column) == 0) {
+      "Enter id column" %>% message()
+    }
+
+    if (to_upper) {
+      values <- str_to_upper(values)
+    }
+
+    all_keywords <- str_c(values, collapse = "|")
+
+    if (return_message) {
+      value_slugs <- values %>% str_c(collapse = ", ")
+      glue("Searching {feature} for {value_slugs}") %>% message()
+    }
+
+    data <-
+      data %>%
+      select(one_of(id_column, feature)) %>%
+      rename(feature = UQ(feature)) %>%
+      mutate(has_match = feature %>% str_detect(all_keywords)) %>%
+      filter(has_match) %>%
+      collect() %>%
+      select(-has_match) %>%
+      rename(UQ(feature) := feature)
+
+
+    data <-
+      values %>%
+      map_dfr(function(x) {
+
+        if (return_message) {
+          glue("Searching {feature} for {x}") %>% message()
+        }
+
+        data %>%
+          filter(!!sym(feature) %>% str_detect(x)) %>%
+          select(!!sym(id_column)) %>%
+          mutate(
+            matching_feature = glue("{feature}") %>% as.character(),
+            searched = x,
+            match = glue("{feature}: {x}") %>% as.character()
+          ) %>%
+          select(id_column, match, searched, matching_feature)
+
+      })
+
+    data <- data %>%
+      select(one_of(id_column), match, searched, matching_feature)
+
+    gc(verbose = T, reset = T, full = T)
+
+    data
+
+  }
+
+
+#' Arrow Dataset Regex Filter
+#'
+#' @param id_column
+#' @param features
+#' @param values
+#' @param to_upper
+#' @param return_arrow
+#' @param return_message
+#' @param data
+#' @param summarise_final_data
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#'
+#' fpds <- sheldon::arrow_fpds()
+#' arrow_filter_regex(data = fpds, id_column = "id_contract_analysis", features = c("description_obligation", "name_major_program"), values = c("PTSD", "GAY", "GENDER STUDIES", "UKRAINE"))
+#'
+#'
+arrow_filter_regex <-
+  function(data,
+           id_column = "id_contract_analysis",
+           features = NULL,
+           values = NULL,
+           slugs = NULL,
+           to_upper = TRUE,
+           return_arrow = F,
+           summarise_final_data = T,
+           return_message = T) {
+
+    if (length(features) == 0) {
+      "Enter features" %>% message()
+    }
+
+    if (length(values) == 0) {
+      "Enter values" %>% message()
+    }
+
+    .arrow_filter_regex_feature_safe <-
+      possibly(.arrow_filter_regex_feature, tibble())
+
+    all_data <-
+      features %>%
+      map_dfr(function(feature) {
+        .arrow_filter_regex_feature_safe(
+          data = data,
+          id_column = id_column,
+          feature = feature,
+          values = values,
+          to_upper = to_upper,
+          return_message = return_message
+        )
+      })
+
+    if (nrow(all_data) == 0) {
+      "No matches" %>% message()
+      return(tibble())
+    }
+
+
+    if (summarise_final_data) {
+      all_data <- all_data %>%
+        group_by(!!sym(id_column)) %>%
+        summarise(
+          terms_matched = unique(searched) %>% sort() %>% str_c(collapse = " | "),
+          count_matched_terms  = n_distinct(searched),
+          features_matched = unique(matching_feature) %>% sort() %>% str_c(collapse = " | "),
+          count_matched_features = n_distinct(matching_feature),
+          terms_features_matched = unique(match) %>% sort() %>% str_c(collapse = " | "),
+          count_matched_terms_features = n_distinct(match),
+          .groups = "drop"
+        )
+
+    }
+
+    if (return_arrow) {
+      all_data <- all_data %>%
+        asbtools::arrow_table()
+    }
+
+    all_data
+  }
+
+
+#' Filter Arrow File Set
+#'
+#' @param data
+#' @param id_column
+#' @param regex_features
+#' @param regex_values
+#' @param exact_features
+#' @param exact_values
+#' @param to_upper
+#' @param return_arrow
+#' @param return_message
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' fpds <- sheldon::arrow_fpds()
+#' arrow_filter(data = fpds, id_column = "id_contract_analysis", regex_features = c("description_obligation", "name_major_program"), regex_values = c("PTSD", "GAY", "GENDER STUDIES", "UKRAINE"), exact_features = c("code_product_service", "code_research"), exact_values = c("1550", "SR3", "ST3"), to_upper = TRUE, return_arrow = F, return_message = T)
+#'
+#'
+arrow_filter <-
+  function(data,
+           id_column = "id_contract_analysis",
+           regex_features = c("description_obligation", "name_major_program"),
+           regex_values = c("PTSD", "GAY", "GENDER STUDIES", "UKRAINE"),
+           exact_features = c("code_product_service", "code_research"),
+           exact_values = c("1550", "SR3", "ST3"),
+           to_upper = TRUE,
+           return_arrow = F,
+           return_message = T) {
+
+    all_data <- tibble()
+
+    if (length(regex_features) > 0 &
+        length(regex_values) > 0) {
+      tbl_regex <- arrow_filter_regex(
+        data = data,
+        id_column = id_column,
+        features = regex_features,
+        values = regex_values,
+        to_upper = to_upper,
+        return_arrow = F,
+        summarise_final_data = F,
+        return_message = return_message
+      )
+
+      all_data <<- all_data %>% bind_rows(tbl_regex)
+      rm(tbl_regex)
+      gc(verbose = T,
+         reset = T,
+         full = T)
+    }
+
+    if (length(exact_features) > 0) {
+      tbl_exact <- arrow_filter_exact(
+        data = data,
+        id_column = id_column,
+        features = exact_features,
+        values = exact_values,
+        return_arrow = F,
+        return_message = return_message,
+        summarise_final_data = F
+      )
+
+      all_data <-
+        all_data %>% bind_rows(tbl_exact)
+      rm(tbl_exact)
+      gc(verbose = T, reset = T, full = T)
+
+    }
+    all_data <-
+      all_data %>%
+      group_by(!!sym(id_column)) %>%
+      summarise(
+        terms_matched = unique(searched) %>% sort() %>% str_c(collapse = " | "),
+        count_matched_terms  = n_distinct(searched),
+        features_matched = unique(matching_feature) %>% sort() %>% str_c(collapse = " | "),
+        count_matched_features = n_distinct(matching_feature),
+        terms_features_matched = unique(match) %>% sort() %>% str_c(collapse = " | "),
+        count_matched_terms_features = n_distinct(match),
+        .groups = "drop"
+      )
+
+
+    if (return_arrow) {
+      all_data <- all_data %>%
+        asbtools::arrow_table()
+    }
+
+    all_data
+
+  }
+
+# utils -------------------------------------------------------------------
+
+#' Remove Set of Arrow Columns
 #'
 #' @param data
 #' @param remove_columns
@@ -761,7 +1145,6 @@ tbl_arrow_summarise <-
 #' @examples
 arrow_remove_columns <-
   function(data, remove_columns = NULL) {
-
     if (length(remove_columns) == 0) {
       return(data)
     }
@@ -851,7 +1234,9 @@ tbl_arrow <-
 
     if (assign_schema) {
       tbl_features <- arrow_table_features(data = data)
-      assign(x = "tbl_arrow_schema", value = tbl_features, envir = .GlobalEnv)
+      assign(x = "tbl_arrow_schema",
+             value = tbl_features,
+             envir = .GlobalEnv)
     }
 
     if (to_duck) {
@@ -876,7 +1261,6 @@ tbl_arrow <-
 #' @examples
 arrow_table_features <-
   function(data) {
-
     if (class(data) %in% c("FileSystemDataset") %>% sum(na.rm = T) > 0) {
       tbl_features <-
         tibble(feature = data$schema$ToString() %>% str_split("\\n") %>% flatten_chr()) %>%
@@ -903,8 +1287,8 @@ arrow_table_features <-
       ) %>%
       mutate_if(is.character, str_squish) %>%
       mutate(number_column = 1:n(),
-             number_column_python = 1:n()-1) %>%
-      select(number_column,number_column_python, everything())
+             number_column_python = 1:n() - 1) %>%
+      select(number_column, number_column_python, everything())
 
     tbl_features
 
@@ -916,6 +1300,7 @@ arrow_table_features <-
 #' @export
 #'
 #' @examples
+#' tbl_arrow_compute_functions()
 tbl_arrow_compute_functions <-
   function() {
     tibble(name_function = arrow::list_compute_functions()) %>%
@@ -953,6 +1338,8 @@ tbl_arrow_compute_functions <-
 #' @export
 #'
 #' @examples
+#'
+#'
 pq_write <-
   function(data = NULL,
            file_path = NULL,
@@ -1075,7 +1462,6 @@ arrow_write_data_set <-
            hive_style = TRUE,
            existing_data_behavior = c("overwrite", "error", "delete_matching"),
            ...) {
-
     if (length(file_path) == 0) {
       "No path" %>% message()
       return(data)
@@ -1103,14 +1489,13 @@ arrow_write_data_set <-
     setwd("~")
 
     data <-
-      arrow::read_parquet(
-        file = x,
-        as_data_frame = T,
-        props = properties
-      )
+      arrow::read_parquet(file = x,
+                          as_data_frame = T,
+                          props = properties)
 
     if (length(remove_columns) > 0) {
-      has_actual_names <- names(data) %in% remove_columns %>% sum(na.rm = T) > 0
+      has_actual_names <-
+        names(data) %in% remove_columns %>% sum(na.rm = T) > 0
 
       if (has_actual_names) {
         remove_columns <- names(data)[names(data) %in% remove_columns]
@@ -1126,7 +1511,8 @@ arrow_write_data_set <-
 
     if (to_duck) {
       "Coercing to duckdb" %>% message()
-      pos_cols <- data %>% select_if(lubridate::is.POSIXct) %>% names()
+      pos_cols <-
+        data %>% select_if(lubridate::is.POSIXct) %>% names()
 
       if (length(pos_cols) > 0) {
         data <- data %>%
@@ -1156,7 +1542,6 @@ arrow_write_data_set <-
            assign_schema = T,
            schema_name = NULL,
            properties =  ParquetArrowReaderProperties$create()) {
-
     oldwd <- getwd()
 
     setwd("~")
@@ -1202,7 +1587,6 @@ arrow_write_data_set <-
     }
 
     if (assign_schema) {
-
       if (length(schema_name) == 0) {
         schema_name <- "tbl_arrow_schema"
       } else {
@@ -1211,7 +1595,9 @@ arrow_write_data_set <-
       }
 
       tbl_features <- arrow_table_features(data = data)
-      assign(x = schema_name, value = tbl_features, envir = .GlobalEnv)
+      assign(x = schema_name,
+             value = tbl_features,
+             envir = .GlobalEnv)
     }
 
     data
@@ -1250,7 +1636,6 @@ pq_read <-
            snake_names = F,
            remove_columns = NULL,
            properties =  ParquetArrowReaderProperties$create()) {
-
     if (length(x) == 0) {
       "Please enter a parquet file" %>% message()
       return(invisible())
@@ -1586,11 +1971,15 @@ arrow_open_data <-
 
       if (length(schema_name) == 0) {
         schema_name <- "tbl_arrow_schema"
-        assign(x = schema_name, value = tbl_features, envir = .GlobalEnv)
+        assign(x = schema_name,
+               value = tbl_features,
+               envir = .GlobalEnv)
       } else {
         schema_name <-
           glue("tbl_arrow_schema_{schema_name}") %>% as.character()
-        assign(x = schema_name, value = tbl_features, envir = .GlobalEnv)
+        assign(x = schema_name,
+               value = tbl_features,
+               envir = .GlobalEnv)
       }
 
 
@@ -1613,4 +2002,3 @@ arrow_open_data <-
     con
 
   }
-
